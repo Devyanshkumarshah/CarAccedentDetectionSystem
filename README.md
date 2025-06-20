@@ -38,7 +38,7 @@ GPS Module to Arduino uno:
 
 Working:
 1. The Ultrasonic Sensor measures the distance to an obstacle in front of it.
-2. The Vibration Sensor detects any sudden impact or collision.
+2. The Vibration Sensor detects measures the impact of collision 
 3. The Arduino continuously reads data from the Ultrasonic Sensor and the Vibration Sensor.
 4. If the Ultrasonic Sensor detects an object closer than a threshold distance (indicating a potential collision), and the Vibration Sensor detects an impact, the Arduino triggers the Relay Module to simulate an     accident detection.
 5. Upon accident detection, the Arduino activates the GSM Module to send an emergency message with the GPS coordinates of the accident location to a pre-defined emergency contact number.
