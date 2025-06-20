@@ -1,158 +1,100 @@
-#include <TinyGPS.h>
 #include <LiquidCrystal.h>
-
-
+#include <TinyGPS.h>
 LiquidCrystal lcd(4, 5, 6, 7, 8, 9);
-
+const int relay_Pin = 2;
+int triggerPin =10;
+int echoPin = 11;
+const int vibration_Sensor = A0;   // analog pin to read analog value 
 const int buzzerPin = 3;
-const int analogVibrationSensorPin = A0;
-
-int triggerPin = 10; // Trigger pin for ultrasonic sensor
-int echoPin = 11;    // Echo pin for ultrasonic sensor
-
-TinyGPS gps; // TinyGPS object for GPS parsing
-
-long lat, lon; // Variables to store latitude and longitude
-bool vibration_Status = LOW; // Flag for accident-level vibration
-long duration, distance; // Variables for ultrasonic sensor readings
-
+TinyGPS gps;
+long lat,lon;
+bool vibration_Status = LOW;
+long duration, distance;
 void setup() {
-  // Set up pin modes
-  pinMode(buzzerPin, OUTPUT); // Buzzer pin as output (for PWM)
-  // The digital vibration_sensor pin (12) is no longer directly used for input.
-  // Instead, we'll read from analogVibrationSensorPin (A0).
-  pinMode(triggerPin, OUTPUT); // Ultrasonic trigger pin as output
-  pinMode(echoPin, INPUT);     // Ultrasonic echo pin as input
-
-  // Start serial communication for GPS and debugging
+  pinMode(relay_Pin, OUTPUT);
+  pinMode(vibration_Sensor, INPUT);
+  pinMode(triggerPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
   Serial.begin(9600);
-  
-  // Initialize LCD
   lcd.begin(16, 2);
   lcd.clear();
-
-  // Initial display messages on LCD
   lcd.print("ACCIDENT DETECTION");
-  lcd.setCursor(3, 1); // For a 16x2 LCD, rows are 0 and 1
+  lcd.setCursor(3,2);
   lcd.print("SYSTEM");
-  delay(1000); // Display for 1 second
+  delay(500);  
+}
+void loop() {   
+       digitalWrite(relay_Pin, HIGH);   
+        delay(200);  
+        lcd.clear();
+        lcd.print("Vehicle Started");
+        delay(500);     
+        while(1)
+        {   
+          int vibrationValue = analogRead(vibration_Sensor);
+          int buzzerPWM = map(vibrationValue, 0, 1023, 0, 255);   // Arduino boards (like the Uno, Nano, Mega) use 8-bit timers for their PWM outputs.An 8-bit value can represent 2^8 =256 different states.
+          analogWrite(buzzerPin, buzzerPWM);
+          delay(100);
+   
+          ultrasonic();
+
+          delay(100); 
+          if((vibration_Status <= 100 )  && (distance < 5))
+          {
+           delay(100);
+           digitalWrite(relay_Pin, LOW);  
+           delay(100);
+           lcd.clear();
+           lcd.print("Accident Detected");
+           lcd.setCursor(3,2);
+           lcd.print("Sending Msg");
+           delay(500);    
+           Serial.println("AT+CMGF=1");    //Sets the GSM Module in Text Mode
+           delay(100);  // Delay of 1000 milli seconds or 1 second
+           Serial.println("AT+CMGS=\"+919922512017\"\r"); // Replace x with mobile number
+           delay(100);
+           Serial.println("Accident Detected ");// The SMS text you want to send
+           Serial.println("please check location");// The SMS text you want to send
+           while(1)
+           {
+            gps_read();
+
+           }
+          }
+}
 }
 
-void loop() {
-  // Turn on the buzzer briefly when the vehicle starts (initial indication)
-  analogWrite(buzzerPin, 255); // Max volume
-  delay(200);
-  analogWrite(buzzerPin, 0); // Turn off after brief buzz
-
-  lcd.clear();
-  lcd.print("Vehicle Started");
-  delay(1000); // Display for 1 second
-
-  // --- CONTINUOUS OPERATION LOOP ---
-
-  // Read analog vibration sensor value
-  int vibrationValue = analogRead(analogVibrationSensorPin);
-
-  // Map the raw analog sensor value (0-1023) to a PWM intensity (0-255)
-  // You might need to adjust the 'in_min' and 'in_max' of the map function
-  // For example, if your sensor rarely goes below 100, set in_min to 100.
-  // If a very low vibration should produce no sound, set a threshold.
-  int buzzerIntensity = map(vibrationValue, 0, 1023, 0, 255);
-
-  // Apply a minimum threshold: if vibration is too low, turn off the buzzer
-  // This prevents constant faint buzzing from minor vibrations/noise.
-  const int MIN_VIBRATION_THRESHOLD_ANALOG = 50; // one can adjust value between (0-1023)
-  if (vibrationValue < MIN_VIBRATION_THRESHOLD_ANALOG) {
-    buzzerIntensity = 0; // Turn off buzzer
-  }
-
-  // the calculated PWM intensity to the buzzer pin
-  analogWrite(buzzerPin, buzzerIntensity);
-
-  delay(50); // Small delay to prevent too rapid readings and allow sound to play
-
-  // Perform ultrasonic distance measurement
-  ultrasonic();
-
-  // Determine if it's an "accident" based on a higher vibration threshold and distance
-  // This 'vibration_Status' is now derived from the analog reading
-  const int ACCIDENT_VIBRATION_THRESHOLD_ANALOG = 700; // Adjust this value (0-1023)
-  vibration_Status = (vibrationValue >= ACCIDENT_VIBRATION_THRESHOLD_ANALOG);
-
-  // Check for accident conditions: significant vibration and close object
-  if ((vibration_Status == HIGH) && (distance < 5)) { // distance < 5 (cm)
-    delay(100);
-    // If accident detected, blast the buzzer at full volume
-    analogWrite(buzzerPin, 255);
-    delay(500); // Keep buzzer on for a short period to alert
-
-    lcd.clear();
-    lcd.print("Accident Detected!");
-    lcd.setCursor(3, 1);
-    lcd.print("Sending Msg...");
-    delay(1000); // Display for 1 second
-
-    // Send SMS via GSM module
-    Serial.println("AT+CMGF=1"); // Sets the GSM Module in text Mode
-    delay(500); // Give module time to process command
-    // Replace with your emergency contact number
-    Serial.println("AT+CMGS=\"+918709586243\"\r"); 
-    delay(500); // Give module time to process command
-    Serial.println("ACCIDENT DETECTED!");
-    Serial.println("Please check the location immediately.");
-    // End SMS with Ctrl+Z (ASCII 26)
-    Serial.write(26); 
-    delay(3000); // Wait for SMS to be sent
-
-    // Enter continuous GPS reading loop after accident
-    // This 'while(1)' ensures GPS coordinates are repeatedly sent until reset
-    while (1) {
-      lcd.clear();
-      lcd.print("Getting GPS Coords");
-      lcd.setCursor(0, 1);
-      lcd.print("Sending...");
-      gps_read(); // Read and print GPS data
-      delay(5000); // Delay before next GPS read to avoid spamming serial
+void gps_read()
+{ 
+ byte a;
+  
+  if(Serial.available())  
+  {
+    a=Serial.read();
+   
+   //Serial.write(a);
+   
+    while(gps.encode(a))   // encode gps data 
+    { 
+      gps.get_position(&lat,&lon); // get latitude and longitude
+    
+      Serial.println("Position: ");
+      Serial.print("lat:");
+      Serial.println((lat*0.000001),8);
+      Serial.print("log:");
+      Serial.println((lon*0.000001),8);
     }
   }
 }
 
-// Function to read and print GPS data
-void gps_read() {
-  // Read available serial data and feed it to TinyGPS parser
-  while (Serial.available()) {
-    byte gpsChar = Serial.read();
-    if (gps.encode(gpsChar)) {
-      // If a full GPS sentence is processed, get position
-      gps.get_position(&lat, &lon);
-
-      // Print latitude and longitude
-      Serial.println("--- GPS Position ---");
-      Serial.print("Latitude: ");
-      Serial.println((lat * 0.000001), 8); // Convert to float with 8 decimal places
-      Serial.print("Longitude: ");
-      Serial.println((lon * 0.000001), 8); // Convert to float with 8 decimal places
-      Serial.println("--------------------");
-    }
-  }
-}
-
-// Function to perform ultrasonic distance measurement
-void ultrasonic() {
-  // Clear the trigger pin by setting it LOW for a short period
-  digitalWrite(triggerPin, LOW);
-  delayMicroseconds(2);
-
-  // Set the trigger pin HIGH for 10 microseconds to send a pulse
-  digitalWrite(triggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(triggerPin, LOW);
-
-  // Measure the duration of the pulse on the echo pin
-  duration = pulseIn(echoPin, HIGH);
-
-  // Calculate distance in centimeters (speed of sound ~343 m/s or 0.0343 cm/microsecond)
-  // Distance = (duration of echo * speed of sound) / 2 (because sound travels to object and back)
-  // (duration in microseconds / 2) / 29.1 results in cm
-  distance = (duration / 2) / 29.1;
+void ultrasonic()
+{ // variable to hold the duration and distance value for HC-SR04
+  digitalWrite(triggerPin, LOW); // Write trigger pin is as low
+  delayMicroseconds(2); // Delay for 2microseconds
+  digitalWrite(triggerPin, HIGH); //Write trigger pin is as high
+  delayMicroseconds(10);// Delay for 10microseconds
+  digitalWrite(triggerPin, LOW); //Write trigger pin is as low
+  duration = pulseIn(echoPin, HIGH);//Read the echo pin
+  distance = (duration / 2) / 29.1; // calculate the distance
 }
