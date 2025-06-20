@@ -49,28 +49,24 @@ void loop() {
   delay(1000); // Display for 1 second
 
   // --- CONTINUOUS OPERATION LOOP ---
-  // The 'while(1);' that was here previously was a critical bug
-  // that stopped the program. It has been removed.
-  // The loop() function will now continuously execute.
 
   // Read analog vibration sensor value
   int vibrationValue = analogRead(analogVibrationSensorPin);
 
   // Map the raw analog sensor value (0-1023) to a PWM intensity (0-255)
   // You might need to adjust the 'in_min' and 'in_max' of the map function
-  // based on the actual output range of your specific analog vibration sensor.
   // For example, if your sensor rarely goes below 100, set in_min to 100.
   // If a very low vibration should produce no sound, set a threshold.
   int buzzerIntensity = map(vibrationValue, 0, 1023, 0, 255);
 
   // Apply a minimum threshold: if vibration is too low, turn off the buzzer
   // This prevents constant faint buzzing from minor vibrations/noise.
-  const int MIN_VIBRATION_THRESHOLD_ANALOG = 50; // Adjust this value (0-1023)
+  const int MIN_VIBRATION_THRESHOLD_ANALOG = 50; // one can adjust value between (0-1023)
   if (vibrationValue < MIN_VIBRATION_THRESHOLD_ANALOG) {
     buzzerIntensity = 0; // Turn off buzzer
   }
 
-  // Write the calculated PWM intensity to the buzzer pin
+  // the calculated PWM intensity to the buzzer pin
   analogWrite(buzzerPin, buzzerIntensity);
 
   delay(50); // Small delay to prevent too rapid readings and allow sound to play
