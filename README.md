@@ -10,8 +10,8 @@ Tools Required
 Ultrasonic Sensor to Arduino Uno:
       . VCC to 5V pin.
       . GND to GND pin.
-      . Trig to digital pin 2.
-      . Echo to digital pin 3.
+      . Trig to digital pin 10.
+      . Echo to digital pin 11.
       
 Relay Module to Arduino Uno:
       . VCC to 5V pin.
@@ -21,7 +21,7 @@ Relay Module to Arduino Uno:
 Vibration Sensor to Arduino Uno:
       . VCC to 5V pin.
       . GND to GND pin.
-      . Signal to digital pin 5.
+      . Signal to Analoge pin A0   // to read the data in analoge signal, Here we are using PWM. 
 
 Display Board to Arduino Uno:
       . VCC to 5V pin.
