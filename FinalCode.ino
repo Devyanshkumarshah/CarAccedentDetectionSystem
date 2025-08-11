@@ -52,7 +52,7 @@ void loop() {
            delay(500);    
            Serial.println("AT+CMGF=1");    //Sets the GSM Module in Text Mode
            delay(100);  // Delay of 1000 milli seconds or 1 second
-           Serial.println("AT+CMGS=\"+919922512017\"\r"); // Replace x with mobile number
+           Serial.println("AT+CMGS=\"+918709586243\"\r"); 
            delay(100);
            Serial.println("Accident Detected ");// The SMS text you want to send
            Serial.println("please check location");// The SMS text you want to send
