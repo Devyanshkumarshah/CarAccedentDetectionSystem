@@ -1,5 +1,5 @@
 Tools Required
-      • Arduino Uno (simulated in Proteus)
+      • Arduino Uno 
       • Ultrasonic Sensor (HC-SR04 or similar) 
       • Relay Module 
       • Vibration Sensor 
